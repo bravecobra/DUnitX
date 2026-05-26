@@ -214,19 +214,19 @@ begin
   WriteLine('Testing finished');
 
   if fIssues.Count <> 0 then
-    begin
-      WriteLine('- Issues:');
-      IncIndent();
-      for i := 0 to fIssues.Count - 1  do
-        begin
-          WriteLine('%d %s', [i + 1, fIssues.Names[i]]);
-          IncIndent(2);
-          WriteLine(fIssues.ValueFromIndex[i]);
-          DecIndent(2)
-        end;
-      DecIndent();
-      WriteLine()
-    end;
+  begin
+    WriteLine('- Issues:');
+    IncIndent();
+    for i := 0 to fIssues.Count - 1  do
+      begin
+        WriteLine('%d %s', [i + 1, fIssues.Names[i]]);
+        IncIndent(2);
+        WriteLine(fIssues.ValueFromIndex[i]);
+        DecIndent(2)
+      end;
+    DecIndent();
+    WriteLine()
+  end;
 
   WriteLine('- Fixture Count: %d', [RunResults.FixtureCount]);
   WriteLine('- Test Count:    %d', [RunResults.TestCount]);
@@ -276,6 +276,30 @@ begin
   WriteLine('- Status: SUCCESS')
 end;
 
+function TTimeSpanToString( value : TTimeSpan): string;
+var
+  Fmt: string;
+  Days, SubSecondTicks: Integer;
+  LTicks: Int64;
+begin
+  Fmt := '%1:.2d:%2:.2d:%3:.2d'; // do not localize
+  Days :=  value.Ticks div TTimeSpan.TicksPerDay;
+  LTicks := value.Ticks mod TTimeSpan.TicksPerDay;
+  if value.Ticks < 0 then
+    LTicks := -LTicks;
+  if value.Days <> 0 then
+    Fmt := '%0:d.' + Fmt; // do not localize
+  SubSecondTicks := LTicks mod TTimeSpan.TicksPerSecond;
+  if SubSecondTicks <> 0 then
+    Fmt := Fmt + '.%4:.7d'; // do not localize
+  Result := Format(Fmt,
+     [Days,
+    (LTicks div TTimeSpan.TicksPerHour) mod 24,
+    (LTicks div TTimeSpan.TicksPerMinute) mod 60,
+    (LTicks div TTimeSpan.TicksPerSecond) mod 60,
+    SubSecondTicks]);
+end;
+
 procedure TDunitXTextLogger.WriteLine(const text : string; const duration : TTimeSpan);
 var
   buf : string;
@@ -286,7 +310,7 @@ begin
 
   if duration.Ticks <> 0 then
     begin
-      buf := duration.ToString();
+      buf := TTimeSpanToString(duration);
 
       while Copy(buf, 1, 3) = '00:' do
         Delete(buf, 1, 3);
@@ -356,18 +380,19 @@ begin
     outEncoding := TEncoding.UTF8;
 
   if overwrite then
-    begin
-      outStream := TOutputStream.Create(outName, fmCreate);
+  begin
+    outStream := TOutputStream.Create(outName, fmCreate);
 
-      bufBOM := outEncoding.GetPreamble();
-      outStream.WriteData(bufBOM, Length(bufBOM))
-    end
+    bufBOM := outEncoding.GetPreamble();
+    //todo : confirm this work
+    outStream.Write(bufBOM, Length(bufBOM))
+  end
   else
-    begin
-      outStream := TOutputStream.Create(outName, fmOpenReadWrite);
+  begin
+    outStream := TOutputStream.Create(outName, fmOpenReadWrite);
 
-      outStream.Seek(0, soFromEnd)
-    end;
+    outStream.Seek(0, soFromEnd)
+  end;
 
   inherited Create(outStream, True)
 end;
